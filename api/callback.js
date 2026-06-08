@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   const { code, error, state } = req.query;
 
-  const EXPO_REDIRECT = 'exp://exp.host/@anonymous/flowmix';
+  const EXPO_REDIRECT = 'exp://u.expo.dev/--/';
 
   if (error) {
     return res.redirect(`${EXPO_REDIRECT}?error=${error}`);
