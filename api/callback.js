@@ -1,26 +1,43 @@
 export default async function handler(req, res) {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
 
   if (error) {
-    return res.send(`
-      <html><body style="background:#0a0a0a;color:white;font-family:sans-serif;text-align:center;padding:50px">
-        <h2>❌ Erreur : ${error}</h2>
-        <p>Retourne dans FlowMix et réessaie.</p>
-      </body></html>
-    `);
+    return res.redirect(`exp://127.0.0.1:19000/--/callback?error=${error}`);
   }
 
-  if (code) {
-    return res.send(`
-      <html><body style="background:#0a0a0a;color:white;font-family:sans-serif;text-align:center;padding:50px">
-        <h1>✅ Connexion réussie !</h1>
-        <p>Copie ce code et colle-le dans FlowMix :</p>
-        <div style="background:#1a1a1a;padding:20px;border-radius:10px;margin:20px;word-break:break-all;font-size:14px;color:#1DB954">
-          ${code}
-        </div>
-        <p style="color:#888;font-size:13px">Appuie longtemps sur le code pour le copier</p>
-      </body></html>
-    `);
+  if (!code) {
+    return res.status(400).json({ error: 'No code received' });
+  }
+
+  const codeVerifier = state;
+
+  try {
+    const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: `${process.env.VERCEL_URL}/api/callback`,
+        client_id: process.env.SPOTIFY_CLIENT_ID,
+        code_verifier: codeVerifier,
+      }),
+    });
+
+    const data = await tokenResponse.json();
+
+    if (data.access_token) {
+      return res.redirect(
+        `exp://127.0.0.1:19000/--/callback?access_token=${data.access_token}`
+      );
+    } else {
+      return res.redirect(
+        `exp://127.0.0.1:19000/--/callback?error=token_failed`
+      );
+    }
+  } catch (e) {
+    return res.redirect(
+      `exp://127.0.0.1:19000/--/callback?error=server_error`
+    );
   }
 }
-
